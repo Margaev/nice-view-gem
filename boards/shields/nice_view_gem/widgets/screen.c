@@ -9,21 +9,20 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/events/endpoint_changed.h>
 #include <zmk/events/layer_state_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
-#include <zmk/events/wpm_state_changed.h>
 #include <zmk/battery.h>
 #include <zmk/ble.h>
 #include <zmk/display.h>
 #include <zmk/endpoints.h>
 #include <zmk/keymap.h>
 #include <zmk/usb.h>
-#include <zmk/wpm.h>
 
 #include "battery.h"
 #include "layer.h"
 #include "output.h"
 #include "profile.h"
 #include "screen.h"
-#include "wpm.h"
+
+LV_IMG_DECLARE(behelit_pixel_volume);
 
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
 
@@ -43,12 +42,14 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
     rotate_canvas(canvas, cbuf);
 }
 
-static void draw_middle(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
+static void draw_middle(lv_obj_t *widget, lv_color_t cbuf[]) {
     lv_obj_t *canvas = lv_obj_get_child(widget, 1);
     fill_background(canvas);
 
     // Draw widgets
-    draw_wpm_status(canvas, state);
+    lv_draw_img_dsc_t img_dsc;
+    lv_draw_img_dsc_init(&img_dsc);
+    lv_canvas_draw_img(canvas, 0, 0, &behelit_pixel_volume, &img_dsc);
 
     // Rotate for horizontal display
     rotate_canvas(canvas, cbuf);
@@ -171,32 +172,6 @@ ZMK_SUBSCRIPTION(widget_output_status, zmk_ble_active_profile_changed);
 #endif
 
 /**
- * WPM status
- **/
-
-static void set_wpm_status(struct zmk_widget_screen *widget, struct wpm_status_state state) {
-    for (int i = 0; i < 9; i++) {
-        widget->state.wpm[i] = widget->state.wpm[i + 1];
-    }
-    widget->state.wpm[9] = state.wpm;
-
-    draw_middle(widget->obj, widget->cbuf2, &widget->state);
-}
-
-static void wpm_status_update_cb(struct wpm_status_state state) {
-    struct zmk_widget_screen *widget;
-    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) { set_wpm_status(widget, state); }
-}
-
-struct wpm_status_state wpm_status_get_state(const zmk_event_t *eh) {
-    return (struct wpm_status_state){.wpm = zmk_wpm_get_state()};
-};
-
-ZMK_DISPLAY_WIDGET_LISTENER(widget_wpm_status, struct wpm_status_state, wpm_status_update_cb,
-                            wpm_status_get_state)
-ZMK_SUBSCRIPTION(widget_wpm_status, zmk_wpm_state_changed);
-
-/**
  * Initialization
  **/
 
@@ -209,8 +184,11 @@ int zmk_widget_screen_init(struct zmk_widget_screen *widget, lv_obj_t *parent) {
     lv_canvas_set_buffer(top, widget->cbuf, BUFFER_SIZE, BUFFER_SIZE, LV_IMG_CF_TRUE_COLOR);
 
     lv_obj_t *middle = lv_canvas_create(widget->obj);
-    lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, BUFFER_OFFSET_MIDDLE, 0);
-    lv_canvas_set_buffer(middle, widget->cbuf2, BUFFER_SIZE, BUFFER_SIZE, LV_IMG_CF_TRUE_COLOR);
+    lv_obj_align(middle, LV_ALIGN_TOP_RIGHT,
+                 BUFFER_OFFSET_MIDDLE - (ART_BUFFER_SIZE - BUFFER_SIZE) / 2, 0);
+    // The 68x76 image needs a larger square canvas before rotation.
+    lv_canvas_set_buffer(middle, widget->cbuf2, ART_BUFFER_SIZE, ART_BUFFER_SIZE,
+                         LV_IMG_CF_TRUE_COLOR);
 
     lv_obj_t *bottom = lv_canvas_create(widget->obj);
     lv_obj_align(bottom, LV_ALIGN_TOP_RIGHT, BUFFER_OFFSET_BOTTOM, 0);
@@ -220,7 +198,7 @@ int zmk_widget_screen_init(struct zmk_widget_screen *widget, lv_obj_t *parent) {
     widget_battery_status_init();
     widget_layer_status_init();
     widget_output_status_init();
-    widget_wpm_status_init();
+    draw_middle(widget->obj, widget->cbuf2);
 
     return 0;
 }
