@@ -3,9 +3,11 @@
 #include "animation.h"
 
 LV_IMG_DECLARE(ahegao_short);
+LV_IMG_DECLARE(berserk_guts);
+LV_IMG_DECLARE(berserk_gnome);
 
 const lv_img_dsc_t *anim_imgs[] = {
-    &ahegao_short
+    &berserk_gnome
 };
 
 void draw_animation(lv_obj_t *canvas) {

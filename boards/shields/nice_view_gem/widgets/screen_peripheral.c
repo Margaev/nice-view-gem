@@ -21,6 +21,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 LV_IMG_DECLARE(ahegao);
 LV_IMG_DECLARE(getogojo);
 LV_IMG_DECLARE(ahegao_short);
+LV_IMG_DECLARE(berserk_guts);
 
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
 
